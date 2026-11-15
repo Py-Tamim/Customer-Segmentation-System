@@ -66,3 +66,43 @@ summary = rfm.groupby("Cluster").agg(                      # Describe each clust
     Avg_Orders=("Frequency", "mean"),
     Avg_Spend_Tk=("Monetary", "mean"),
 ).round(1)
+
+names = {}
+left = list(summary.index)
+
+big = summary.loc[left, "Avg_Spend_Tk"].idxmax()          # highest spending
+names[big] = "Big Spenders"
+left.remove(big)
+
+occasional = summary.loc[left, "Avg_Recency_Days"].idxmax()   # inactive longest
+names[occasional] = "Occasional / At-Risk Buyers"
+left.remove(occasional)
+
+new = summary.loc[left, "Avg_Orders"].idxmin()            # fewest orders
+names[new] = "New Customers"
+left.remove(new)
+
+names[left[0]] = "Loyal Regulars"                         # the last one
+
+rfm["Segment"] = rfm["Cluster"].map(names)
+summary["Segment"] = summary.index.map(names)
+
+print("\n===== Customer Segments =====")
+print(summary.to_string())
+
+# ------------------------------------------------------------
+# 8. Draw clusters with PCA
+# ------------------------------------------------------------
+pca = PCA(n_components=2, random_state=42)
+points = pca.fit_transform(X)
+
+plt.figure(figsize=(9, 6))
+for segment in rfm["Segment"].unique():
+    mask = (rfm["Segment"] == segment).values
+    plt.scatter(points[mask, 0], points[mask, 1], label=segment, alpha=0.7)
+
+plt.title("Customer Segments (PCA view)")
+plt.xlabel("PCA 1")
+plt.ylabel("PCA 2")
+plt.legend()
+plt.show()
