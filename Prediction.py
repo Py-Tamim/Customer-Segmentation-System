@@ -23,7 +23,6 @@ df["City"] = df["Area"].str.split(",").str[-1].str.strip()
 df["TotalPrice"] = df["Quantity"] * df["UnitPrice"]
 print("Rows after cleaning:", len(df))
 
-
 snapshot_date = df["InvoiceDate"].max() + pd.Timedelta(days=1)  # Build the RFM table (one row per customer)             
 rfm = df.groupby("CustomerID").agg(
     Recency=("InvoiceDate", lambda x: (snapshot_date - x.max()).days),
@@ -33,3 +32,37 @@ rfm = df.groupby("CustomerID").agg(
 )
 print("\nCustomers:", len(rfm))
 print(rfm[["Recency", "Frequency", "Monetary"]].describe().round(1))
+
+rfm_log = np.log1p(rfm[["Recency", "Frequency", "Monetary"]])   # Log transform + scale
+X = StandardScaler().fit_transform(rfm_log)
+
+inertia = []                                                    # Elbow method + silhouette score
+silhouette = []
+k_values = range(2, 9)
+for k in k_values:
+    model = KMeans(n_clusters=k, n_init=10, random_state=42)
+    model.fit(X)
+    inertia.append(model.inertia_)
+    silhouette.append(silhouette_score(X, model.labels_))
+fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+axes[0].plot(k_values, inertia, marker="o")
+axes[0].set_title("Elbow Method")
+axes[0].set_xlabel("Number of clusters (k)")
+axes[0].set_ylabel("Inertia")
+axes[1].plot(k_values, silhouette, marker="o", color="green")
+axes[1].set_title("Silhouette Score")
+axes[1].set_xlabel("Number of clusters (k)")
+axes[1].set_ylabel("Score")
+plt.tight_layout()
+plt.show()
+
+k = 4                                                       # Train KMeans
+kmeans = KMeans(n_clusters=k, n_init=10, random_state=42)
+rfm["Cluster"] = kmeans.fit_predict(X)
+
+summary = rfm.groupby("Cluster").agg(                      # Describe each cluster
+    Customers=("Recency", "count"),
+    Avg_Recency_Days=("Recency", "mean"),
+    Avg_Orders=("Frequency", "mean"),
+    Avg_Spend_Tk=("Monetary", "mean"),
+).round(1)
