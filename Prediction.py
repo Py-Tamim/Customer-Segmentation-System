@@ -106,3 +106,28 @@ plt.xlabel("PCA 1")
 plt.ylabel("PCA 2")
 plt.legend()
 plt.show()
+
+avg = rfm.groupby("Segment")[["Recency", "Frequency", "Monetary"]].mean()   # Graph for the result
+fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+titles = ["Avg days since last purchase", "Avg number of orders", "Avg money spent (Tk)"]
+for ax, col, title in zip(axes, avg.columns, titles):
+    avg[col].plot(kind="bar", ax=ax, color=["#4C72B0", "#55A868", "#C44E52", "#8172B2"])
+    ax.set_title(title)
+    ax.set_xlabel("")
+    ax.tick_params(axis="x", rotation=30)
+plt.tight_layout()
+plt.show()
+
+city_table = pd.crosstab(rfm["City"], rfm["Segment"])                    # Segments by city (customer count)
+city_table["Total"] = city_table.sum(axis=1)
+city_table = city_table.sort_values("Total", ascending=False)
+print("\n===== Customers per City and Segment =====")
+print(city_table.to_string())
+city_table.drop(columns="Total").plot(kind="bar", stacked=True, figsize=(11, 5))
+plt.title("Customer Segments by City")
+plt.xlabel("City")
+plt.ylabel("Number of customers")
+plt.xticks(rotation=40, ha="right")
+plt.tight_layout()
+plt.show()
+
